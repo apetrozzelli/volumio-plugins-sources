@@ -44,5 +44,11 @@
   "POWERUP_ON_PLAY": "Включение при воспроизведении",
   "D_POWERUP_ON_PLAY": "Автоматически включает усилитель при старте воспроизведения.",
   "POWERUP_ON_BOOT": "Включение при запуске Volumio",
-  "D_POWERUP_ON_BOOT": "Автоматически включает усилитель при загрузке Volumio."
+  "D_POWERUP_ON_BOOT": "Автоматически включает усилитель при загрузке Volumio.",
+  "AUDIO_OUTPUTS_SECTION": "Audio Output Mapping",
+  "D_AUDIO_OUTPUTS_SECTION": "Select which audio output devices are connected to this amplifier.",
+  "ALL_OUTPUTS": "Control all audio outputs",
+  "D_ALL_OUTPUTS": "If enabled, the amplifier controls volume regardless of which audio output device is active in Volumio.",
+  "D_OUTPUT_CARD": "Enable volume control for this audio output.",
+  "TOAST_AUDIO_OUTPUTS_SAVE": "Audio Output Settings"
 }

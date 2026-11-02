@@ -44,7 +44,13 @@
   "POWERUP_ON_PLAY": "Accendi durante la riproduzione",
   "D_POWERUP_ON_PLAY": "Accendi l'amplificatore quando inizia la riproduzione.",
   "POWERUP_ON_BOOT": "Accendi all'avvio di Volumio",
-  "D_POWERUP_ON_BOOT": "Accendi l'amplificatore quando viene avviato Volumio."
+  "D_POWERUP_ON_BOOT": "Accendi l'amplificatore quando viene avviato Volumio.",
+  "AUDIO_OUTPUTS_SECTION": "Mappatura Uscite Audio",
+  "D_AUDIO_OUTPUTS_SECTION": "Seleziona quali uscite audio sono collegate a questo amplificatore. Quando un'uscita abilitata è attiva, l'amplificatore controlla il volume.",
+  "ALL_OUTPUTS": "Controlla tutte le uscite audio",
+  "D_ALL_OUTPUTS": "Se abilitato, l'amplificatore controlla il volume a prescindere dall'uscita audio selezionata in Volumio.",
+  "D_OUTPUT_CARD": "Abilita il controllo del volume per questa uscita audio.",
+  "TOAST_AUDIO_OUTPUTS_SAVE": "Impostazioni Uscite Audio"
 }
 
 

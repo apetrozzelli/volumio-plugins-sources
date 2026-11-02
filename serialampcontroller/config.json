@@ -66,5 +66,13 @@
     "powerupOnPlay": {
         "type": "boolean",
         "value": false
+    },
+    "allOutputs": {
+        "type": "boolean",
+        "value": false
+    },
+    "enabledOutputCards": {
+        "type": "string",
+        "value": "[]"
     }
 }

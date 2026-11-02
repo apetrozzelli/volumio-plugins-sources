@@ -44,5 +44,11 @@
   "POWERUP_ON_PLAY": "Allumer pendant la lecture",
   "D_POWERUP_ON_PLAY": "Allumez l'amplificateur lorsque la lecture commence.",
   "POWERUP_ON_BOOT": "Allumez quand Volumio démarre",
-  "D_POWERUP_ON_BOOT": "Allumez l'amplificateur lorsque le Volumio est démarré."
+  "D_POWERUP_ON_BOOT": "Allumez l'amplificateur lorsque le Volumio est démarré.",
+  "AUDIO_OUTPUTS_SECTION": "Sorties Audio",
+  "D_AUDIO_OUTPUTS_SECTION": "Sélectionnez les sorties audio connectées à cet amplificateur.",
+  "ALL_OUTPUTS": "Contrôler toutes les sorties audio",
+  "D_ALL_OUTPUTS": "Si activé, l'amplificateur contrôle le volume quelle que soit la sortie audio sélectionnée.",
+  "D_OUTPUT_CARD": "Activer le contrôle de volume pour cette sortie audio.",
+  "TOAST_AUDIO_OUTPUTS_SAVE": "Paramètres des sorties audio"
 }

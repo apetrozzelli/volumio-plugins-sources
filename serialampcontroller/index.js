@@ -31,7 +31,7 @@ serialampcontroller.prototype.onVolumioStart = function() {
 	this.config = new (require('v-conf'))();
 	this.config.loadFile(configFile);
     this.messageReceived = new EventEmitter();
-
+    this.outputDeviceListenerRegistered = false;
 
     return libQ.resolve();
 }
@@ -58,6 +58,7 @@ serialampcontroller.prototype.onStart = function() {
     .then(_=> self.listSerialDevices()) //initialize list of serial devices available to the system
     .then(_ => self.setActiveAmp()) // set the active amp
     .then(_=> self.activate())
+    .then(_ => self.registerOutputDeviceListener())
     .then(function(){
             if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] onStart: successfully started plugin');
             defer.resolve();
@@ -253,6 +254,41 @@ serialampcontroller.prototype.updateAmpSettings = function (data) {
         defer.resolve();        
         self.commandRouter.pushToastMessage('success', self.getI18nString('TOAST_SAVE_SUCCESS'), self.getI18nString('TOAST_AMP_SAVE'));
     })  
+    return defer.promise;
+};
+
+// Gets called when user changes and saves Audio Output Mapping settings
+serialampcontroller.prototype.updateAudioOutputs = function (data) {
+    var self = this;
+    var defer = libQ.defer();
+    if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] updateAudioOutputs: Saving Audio Output Mapping:' + JSON.stringify(data));
+
+    var allOutputs = data['all_outputs'] === true;
+    self.config.set('allOutputs', allOutputs);
+
+    var enabledCards = [];
+    Object.keys(data).forEach(function(key) {
+        if (key.indexOf('output_card_') === 0 && data[key] === true) {
+            var cardId = key.replace('output_card_', '');
+            enabledCards.push(cardId);
+        }
+    });
+    self.config.set('enabledOutputCards', JSON.stringify(enabledCards));
+
+    self.applyOutputVolumeOverride()
+    .then(function() {
+        return self.commandRouter.getUIConfigOnPlugin('system_hardware', 'serialampcontroller', {});
+    })
+    .then(function(config) {
+        self.commandRouter.broadcastMessage('pushUiConfig', config);
+        self.commandRouter.pushToastMessage('success', self.getI18nString('TOAST_SAVE_SUCCESS'), self.getI18nString('TOAST_AUDIO_OUTPUTS_SAVE'));
+        defer.resolve();
+    })
+    .fail(function(err) {
+        self.logger.error('[SERIALAMPCONTROLLER] updateAudioOutputs error: ' + err);
+        defer.reject(err);
+    });
+
     return defer.promise;
 };
 
@@ -466,8 +502,43 @@ serialampcontroller.prototype.getUIConfig = function() {
 			uiconf.sections[2].content[9].value = (self.config.get('startAtPowerup')==true);
 			uiconf.sections[2].content[10].value = (self.config.get('powerupOnPlay')==true);
 			uiconf.sections[2].content[11].value = (self.config.get('powerupOnBoot')==true);
+            // audio_outputs section
+            var audioOutputsSection = uiconf.sections.find(function(s) { return s.id === 'audio_outputs'; });
+            if (audioOutputsSection) {
+                var allOutputs = self.config.get('allOutputs') === true;
+                audioOutputsSection.content[0].value = allOutputs;
+
+                var enabledCards = self.getEnabledOutputCards();
+                var alsaCards = self.commandRouter.executeOnPlugin('audio_interface', 'alsa_controller', 'getAlsaCards', '');
+                if (Array.isArray(alsaCards)) {
+                    alsaCards.forEach(function(card) {
+                        if (card && card.id !== undefined && card.name !== 'Loopback') {
+                            var cardIdStr = card.id.toString();
+                            var fieldId = 'output_card_' + cardIdStr;
+                            var cardLabel = card.name + ' (' + (card.alsacard || ('Card ' + cardIdStr)) + ')';
+                            var isChecked = enabledCards.indexOf(cardIdStr) !== -1;
+
+                            audioOutputsSection.content.push({
+                                id: fieldId,
+                                element: 'switch',
+                                label: cardLabel,
+                                doc: self.getI18nString('D_OUTPUT_CARD'),
+                                visibleIf: { field: 'all_outputs', value: false },
+                                value: isChecked
+                            });
+                            if (audioOutputsSection.saveButton && audioOutputsSection.saveButton.data) {
+                                audioOutputsSection.saveButton.data.push(fieldId);
+                            }
+                        }
+                    });
+                }
+            }
+
             // debug_settings section
-			uiconf.sections[3].content[0].value = (self.config.get('logging')==true)
+            var debugSection = uiconf.sections.find(function(s) { return s.id === 'debug_settings'; });
+            if (debugSection && debugSection.content && debugSection.content[0]) {
+                debugSection.content[0].value = (self.config.get('logging') == true);
+            }
             defer.resolve(uiconf);
         })
         .fail(function(err)
@@ -933,12 +1004,32 @@ serialampcontroller.prototype.initVolumeSettings = function() {
     if (self.selectedAmp !==undefined && Object.keys(self.selectedAmp).length >0 &&
         ((self.port instanceof SerialPort && self.serialInterfaceDev != undefined) || (self.port instanceof net.Socket)) && 
         self.parser != undefined) {
+        var currentDevice = self.commandRouter.executeOnPlugin('audio_interface', 'alsa_controller', 'getConfigParam', 'outputdevice');
+        if (currentDevice === undefined || currentDevice === null) {
+            defer.resolve();
+            return defer.promise;
+        }
+
+        if (!self.isOutputCardEnabled(currentDevice)) {
+            if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] initVolumeSettings: active output device ' + currentDevice + ' is disabled for serial volume override.');
+            defer.resolve();
+            return defer.promise;
+        }
+
         var volSettingsData = {
             'pluginType': 'system_hardware',
             'pluginName': 'serialampcontroller',
-            'volumeOverride': true
+            'volumeOverride': true,
+            'device': currentDevice
         };
-        volSettingsData.device = self.commandRouter.executeOnPlugin('audio_interface', 'alsa_controller', 'getConfigParam', 'outputdevice');
+
+        // Register official override with alsa_controller
+        self.commandRouter.executeOnPlugin('audio_interface', 'alsa_controller', 'setDeviceVolumeOverride', {
+            card: currentDevice.toString(),
+            pluginType: 'system_hardware',
+            pluginName: 'serialampcontroller'
+        });
+
         if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] initVolumeSettings: getAlsaCards ' + JSON.stringify(volSettingsData.device));
         let alsaCards = self.commandRouter.executeOnPlugin('audio_interface', 'alsa_controller', 'getAlsaCards', '');
         if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] initVolumeSettings: getAlsaCards ' + JSON.stringify(alsaCards));
@@ -973,6 +1064,89 @@ serialampcontroller.prototype.initVolumeSettings = function() {
         defer.resolve();
     }
     return defer.promise;
+};
+
+serialampcontroller.prototype.isOutputCardEnabled = function(cardId) {
+    var self = this;
+    if (self.config.get('allOutputs') === true) {
+        return true;
+    }
+    if (cardId === undefined || cardId === null) {
+        return false;
+    }
+    var enabledCards = self.getEnabledOutputCards();
+    return enabledCards.indexOf(cardId.toString()) !== -1;
+};
+
+serialampcontroller.prototype.getEnabledOutputCards = function() {
+    var self = this;
+    var raw = self.config.get('enabledOutputCards');
+    if (raw) {
+        try {
+            var parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                return parsed.map(function(c) { return c.toString(); });
+            }
+        } catch (e) {
+            self.logger.error('[SERIALAMPCONTROLLER] getEnabledOutputCards: parse error ' + e);
+        }
+    }
+    // Default: return current active output device so it is enabled out of the box
+    var currentDev = self.commandRouter.executeOnPlugin('audio_interface', 'alsa_controller', 'getConfigParam', 'outputdevice');
+    if (currentDev !== undefined && currentDev !== null) {
+        return [currentDev.toString()];
+    }
+    return [];
+};
+
+serialampcontroller.prototype.applyOutputVolumeOverride = function(targetDevice) {
+    var self = this;
+    var defer = libQ.defer();
+
+    if (targetDevice === undefined || targetDevice === null) {
+        targetDevice = self.commandRouter.executeOnPlugin('audio_interface', 'alsa_controller', 'getConfigParam', 'outputdevice');
+    }
+
+    if (targetDevice === undefined || targetDevice === null || targetDevice === 'volumio' || targetDevice === 'softvolume') {
+        return libQ.resolve();
+    }
+
+    var cardStr = targetDevice.toString();
+    var isEnabled = self.isOutputCardEnabled(cardStr);
+
+    if (self.debugLogging) {
+        self.logger.info('[SERIALAMPCONTROLLER] applyOutputVolumeOverride: targetDevice=' + cardStr + ', isEnabled=' + isEnabled);
+    }
+
+    if (isEnabled) {
+        self.commandRouter.executeOnPlugin('audio_interface', 'alsa_controller', 'setDeviceVolumeOverride', {
+            card: cardStr,
+            pluginType: 'system_hardware',
+            pluginName: 'serialampcontroller'
+        });
+        return self.initVolumeSettings();
+    } else {
+        if (self.debugLogging) {
+            self.logger.info('[SERIALAMPCONTROLLER] applyOutputVolumeOverride: output ' + cardStr + ' not in enabled list, releasing override.');
+        }
+        self.commandRouter.executeOnPlugin('audio_interface', 'alsa_controller', 'updateVolumeSettings');
+        defer.resolve();
+    }
+    return defer.promise;
+};
+
+serialampcontroller.prototype.registerOutputDeviceListener = function() {
+    var self = this;
+    if (!self.outputDeviceListenerRegistered && self.commandRouter && self.commandRouter.sharedVars) {
+        self.outputDeviceListenerRegistered = true;
+        self.commandRouter.sharedVars.registerCallback('alsa.outputdevice', function(newOutputDevice) {
+            if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] alsa.outputdevice changed to: ' + newOutputDevice);
+            if (newOutputDevice && newOutputDevice !== 'volumio' && newOutputDevice !== 'softvolume') {
+                self.applyOutputVolumeOverride(newOutputDevice);
+            }
+        });
+    }
+    return libQ.resolve();
 };
 
 serialampcontroller.prototype.resetVolumeSettings = function() {

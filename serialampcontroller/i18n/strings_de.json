@@ -44,5 +44,11 @@
   "POWERUP_ON_PLAY": "Einschalten bei Wiedergabe",
   "D_POWERUP_ON_PLAY": "Verstärker einschalten, wenn die Wiedergabe gestartet wird.",
   "POWERUP_ON_BOOT": "Einschalten bei Volumio-Start",
-  "D_POWERUP_ON_BOOT": "Verstärker einschalten, wenn die Volumio gestartet wird."
+  "D_POWERUP_ON_BOOT": "Verstärker einschalten, wenn die Volumio gestartet wird.",
+  "AUDIO_OUTPUTS_SECTION": "Audio-Ausgänge",
+  "D_AUDIO_OUTPUTS_SECTION": "Wählen Sie, welche Audioausgänge mit diesem Verstärker verbunden sind.",
+  "ALL_OUTPUTS": "Alle Audio-Ausgänge steuern",
+  "D_ALL_OUTPUTS": "Wenn aktiviert, steuert der Verstärker die Lautstärke unabhängig vom gewählten Audioausgang.",
+  "D_OUTPUT_CARD": "Lautstärkeregelung für diesen Audioausgang aktivieren.",
+  "TOAST_AUDIO_OUTPUTS_SAVE": "Audio-Ausgangseinstellungen"
 }

@@ -205,6 +205,33 @@
       ]
     },
     {
+      "id": "audio_outputs",
+      "element": "section",
+      "label": "TRANSLATE.AUDIO_OUTPUTS_SECTION",
+      "description": "TRANSLATE.D_AUDIO_OUTPUTS_SECTION",
+      "icon": "fa-headphones",
+      "onSave": {
+        "type": "controller",
+        "endpoint": "system_hardware/serialampcontroller",
+        "method": "updateAudioOutputs"
+      },
+      "saveButton": {
+        "label": "TRANSLATE.SAVE",
+        "data": [
+          "all_outputs"
+        ]
+      },
+      "content": [
+        {
+          "id": "all_outputs",
+          "element": "switch",
+          "label": "TRANSLATE.ALL_OUTPUTS",
+          "doc": "TRANSLATE.D_ALL_OUTPUTS",
+          "value": false
+        }
+      ]
+    },
+    {
       "id": "debug_settings",
       "element": "section",
       "label": "TRANSLATE.SET_DEBUG",

@@ -44,5 +44,11 @@
   "POWERUP_ON_PLAY": "Powerup on playback",
   "D_POWERUP_ON_PLAY": "Power up the amplifier when playback is started.",
   "POWERUP_ON_BOOT": "Powerup on Volumio-start",
-  "D_POWERUP_ON_BOOT": "Power up the amplifier when Volumio starts up."
+  "D_POWERUP_ON_BOOT": "Power up the amplifier when Volumio starts up.",
+  "AUDIO_OUTPUTS_SECTION": "Audio Output Mapping",
+  "D_AUDIO_OUTPUTS_SECTION": "Select which audio output devices are connected to this amplifier. When an enabled output is active, the amplifier controls the volume.",
+  "ALL_OUTPUTS": "Control all audio outputs",
+  "D_ALL_OUTPUTS": "If enabled, the amplifier controls volume regardless of which audio output device is active in Volumio.",
+  "D_OUTPUT_CARD": "Enable volume control for this audio output.",
+  "TOAST_AUDIO_OUTPUTS_SAVE": "Audio Output Settings"
 }
