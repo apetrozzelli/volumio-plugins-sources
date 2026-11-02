@@ -224,7 +224,8 @@ serialampcontroller.prototype.updateAmpSettings = function (data) {
     var self = this;
     var defer = libQ.defer();
     if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] updateAmpSettings: Saving Amplifier Settings:' + JSON.stringify(data));
-    self.config.set('volumioInput', data['volumio_input'].label);
+    var rawInput = self.getRawSource(data['volumio_input'].label);
+    self.config.set('volumioInput', rawInput || data['volumio_input'].label);
     self.config.set('minVolume', parseInt(data['min_volume']));
     self.config.set('maxVolume', parseInt(data['max_volume']));
     self.config.set('startupVolume',  parseInt(data['startup_volume']));
@@ -254,6 +255,40 @@ serialampcontroller.prototype.updateAmpSettings = function (data) {
         defer.resolve();        
         self.commandRouter.pushToastMessage('success', self.getI18nString('TOAST_SAVE_SUCCESS'), self.getI18nString('TOAST_AMP_SAVE'));
     })  
+    return defer.promise;
+};
+
+// Gets called when user changes and saves custom input labels
+serialampcontroller.prototype.updateInputLabels = function (data) {
+    var self = this;
+    var defer = libQ.defer();
+    if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] updateInputLabels: Saving Input Labels:' + JSON.stringify(data));
+
+    var customLabels = {};
+    if (self.selectedAmp && Array.isArray(self.selectedAmp.sources)) {
+        for (var i = 0; i < self.selectedAmp.sources.length; i++) {
+            var rawSrc = self.selectedAmp.sources[i];
+            var fieldId = 'input_label_' + i;
+            if (data[fieldId] !== undefined && data[fieldId] !== null && data[fieldId].trim() !== '') {
+                customLabels[rawSrc] = data[fieldId].trim();
+            } else {
+                customLabels[rawSrc] = rawSrc;
+            }
+        }
+    }
+    self.config.set('customInputLabels', JSON.stringify(customLabels));
+
+    return self.commandRouter.getUIConfigOnPlugin('system_hardware', 'serialampcontroller', {})
+    .then(function(config) {
+        self.commandRouter.broadcastMessage('pushUiConfig', config);
+        self.commandRouter.pushToastMessage('success', self.getI18nString('TOAST_SAVE_SUCCESS'), self.getI18nString('TOAST_INPUT_LABELS_SAVE'));
+        defer.resolve();
+    })
+    .fail(function(err) {
+        self.logger.error('[SERIALAMPCONTROLLER] updateInputLabels error: ' + err);
+        defer.reject(err);
+    });
+
     return defer.promise;
 };
 
@@ -475,19 +510,25 @@ serialampcontroller.prototype.getUIConfig = function() {
             //populate input selector drop-down
             if (ampFromConfig !== "..." && self.selectedAmp !== undefined && self.selectedAmp.sources !== undefined) {
                 selected = 0;
+                var currentVolInput = self.config.get('volumioInput');
                 for (var n = 0; n < self.selectedAmp.sources.length; n++)
                 {
+                    var rawSrc = self.selectedAmp.sources[n];
+                    var customLbl = self.getSourceLabel(rawSrc);
+                    var displayLbl = (customLbl && customLbl !== rawSrc) ? (rawSrc + ' (' + customLbl + ')') : rawSrc;
                     self.configManager.pushUIConfigParam(uiconf, 'sections[2].content[0].options', {
                         value: n+1,
-                        label: self.selectedAmp.sources[n]
+                        label: displayLbl
                     });
-                    if (self.config.get('volumioInput')==self.selectedAmp.sources[n]) {
+                    if (currentVolInput == rawSrc || currentVolInput == displayLbl) {
                         selected = n+1;
                     }
                 };       
                 if (selected > 0) {
                     uiconf.sections[2].content[0].value.value = selected;
-                    uiconf.sections[2].content[0].value.label = self.config.get('volumioInput');                
+                    var selRaw = self.selectedAmp.sources[selected - 1];
+                    var selCustom = self.getSourceLabel(selRaw);
+                    uiconf.sections[2].content[0].value.label = (selCustom && selCustom !== selRaw) ? (selRaw + ' (' + selCustom + ')') : selRaw;                
                 }
             } 
             //min, max and start volume
@@ -502,6 +543,29 @@ serialampcontroller.prototype.getUIConfig = function() {
 			uiconf.sections[2].content[9].value = (self.config.get('startAtPowerup')==true);
 			uiconf.sections[2].content[10].value = (self.config.get('powerupOnPlay')==true);
 			uiconf.sections[2].content[11].value = (self.config.get('powerupOnBoot')==true);
+
+            // input_labels section
+            var inputLabelsSection = uiconf.sections.find(function(s) { return s.id === 'input_labels'; });
+            if (inputLabelsSection && self.selectedAmp && Array.isArray(self.selectedAmp.sources) && self.selectedAmp.sources.length > 0) {
+                var customLabels = self.getCustomInputLabels();
+                for (var i = 0; i < self.selectedAmp.sources.length; i++) {
+                    var rawSrc = self.selectedAmp.sources[i];
+                    var fieldId = 'input_label_' + i;
+                    var currentLabel = customLabels[rawSrc] || rawSrc;
+
+                    inputLabelsSection.content.push({
+                        id: fieldId,
+                        element: 'input',
+                        type: 'text',
+                        label: rawSrc,
+                        doc: self.getI18nString('D_CUSTOM_LABEL'),
+                        value: currentLabel
+                    });
+                    if (inputLabelsSection.saveButton && inputLabelsSection.saveButton.data) {
+                        inputLabelsSection.saveButton.data.push(fieldId);
+                    }
+                }
+            }
             // audio_outputs section
             var audioOutputsSection = uiconf.sections.find(function(s) { return s.id === 'audio_outputs'; });
             if (audioOutputsSection) {
@@ -896,7 +960,10 @@ serialampcontroller.prototype.sendCommand  = function(...cmd) {
             case  "source": 
                 if (cmd[1]!=='...') {
                     if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] sendCommand: switch to source: ' + cmd[1]);
-                    cmdString =  self.selectedAmp.sourceCmd[self.selectedAmp.sources.indexOf(cmd[1])];
+                    var sourceIdx = self.getSourceIndex(cmd[1]);
+                    if (sourceIdx !== -1) {
+                        cmdString = self.selectedAmp.sourceCmd[sourceIdx];
+                    }
                 }
                 break;
             default:
@@ -976,15 +1043,19 @@ serialampcontroller.prototype.processResponse = function(response, ...args) {
             break;
         case 'respSource':
             if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] processResponse: Amp signaled source is ' + args[0]);
+            var rawSource = self.getSourceFromRespPostfix(args[0]);
+            var friendlyLabel = self.getSourceLabel(rawSource);
             if (self.config.get('pauseWhenInputChanged')) {
-                var idx = self.selectedAmp.sources.indexOf(self.config.get('volumioInput'));
-                if ((self.selectedAmp.sourceRespPostfix[idx] == args[0])) {
-                    if (self.ampStatus.source!=args[0]) self.socket.emit('play');
+                var currentVolInput = self.config.get('volumioInput');
+                var idx = self.selectedAmp.sources.indexOf(currentVolInput);
+                if (idx !== -1 && self.selectedAmp.sourceRespPostfix[idx] == args[0]) {
+                    if (self.ampStatus.source != args[0]) self.socket.emit('play');
                 } else {
                     self.socket.emit('pause');
                 }
             }
-            self.ampStatus.source = args[0];         
+            self.ampStatus.source = args[0];
+            self.ampStatus.sourceName = friendlyLabel;
             self.messageReceived.emit('source', args[0]);
             break;
         default:
@@ -1147,6 +1218,69 @@ serialampcontroller.prototype.registerOutputDeviceListener = function() {
         });
     }
     return libQ.resolve();
+};
+
+serialampcontroller.prototype.getCustomInputLabels = function() {
+    var self = this;
+    var raw = self.config.get('customInputLabels');
+    if (raw) {
+        try {
+            var parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            if (typeof parsed === 'object' && parsed !== null) {
+                return parsed;
+            }
+        } catch (e) {
+            self.logger.error('[SERIALAMPCONTROLLER] getCustomInputLabels: parse error ' + e);
+        }
+    }
+    return {};
+};
+
+serialampcontroller.prototype.getSourceLabel = function(rawSource) {
+    var self = this;
+    if (!rawSource) return '';
+    var labels = self.getCustomInputLabels();
+    return labels[rawSource] || rawSource;
+};
+
+serialampcontroller.prototype.getRawSource = function(labelOrRaw) {
+    var self = this;
+    if (!labelOrRaw || !self.selectedAmp || !Array.isArray(self.selectedAmp.sources)) {
+        return labelOrRaw;
+    }
+    if (self.selectedAmp.sources.indexOf(labelOrRaw) !== -1) {
+        return labelOrRaw;
+    }
+    for (var i = 0; i < self.selectedAmp.sources.length; i++) {
+        var raw = self.selectedAmp.sources[i];
+        var custom = self.getSourceLabel(raw);
+        var combined = raw + ' (' + custom + ')';
+        if (labelOrRaw === combined || labelOrRaw === custom || labelOrRaw.toLowerCase() === custom.toLowerCase() || labelOrRaw.toLowerCase() === raw.toLowerCase()) {
+            return raw;
+        }
+    }
+    return labelOrRaw;
+};
+
+serialampcontroller.prototype.getSourceIndex = function(query) {
+    var self = this;
+    if (!query || !self.selectedAmp || !Array.isArray(self.selectedAmp.sources)) {
+        return -1;
+    }
+    var raw = self.getRawSource(query);
+    return self.selectedAmp.sources.indexOf(raw);
+};
+
+serialampcontroller.prototype.getSourceFromRespPostfix = function(postfix) {
+    var self = this;
+    if (!postfix || !self.selectedAmp || !Array.isArray(self.selectedAmp.sourceRespPostfix)) {
+        return postfix;
+    }
+    var idx = self.selectedAmp.sourceRespPostfix.indexOf(postfix);
+    if (idx !== -1 && self.selectedAmp.sources[idx]) {
+        return self.selectedAmp.sources[idx];
+    }
+    return postfix;
 };
 
 serialampcontroller.prototype.resetVolumeSettings = function() {

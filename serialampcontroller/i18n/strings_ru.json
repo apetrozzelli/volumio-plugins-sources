@@ -50,5 +50,9 @@
   "ALL_OUTPUTS": "Control all audio outputs",
   "D_ALL_OUTPUTS": "If enabled, the amplifier controls volume regardless of which audio output device is active in Volumio.",
   "D_OUTPUT_CARD": "Enable volume control for this audio output.",
-  "TOAST_AUDIO_OUTPUTS_SAVE": "Audio Output Settings"
+  "TOAST_AUDIO_OUTPUTS_SAVE": "Audio Output Settings",
+  "INPUT_LABELS_SECTION": "Input Labels",
+  "D_INPUT_LABELS_SECTION": "Customize the display names of the amplifier inputs.",
+  "D_CUSTOM_LABEL": "Custom label for this input",
+  "TOAST_INPUT_LABELS_SAVE": "Input Labels Settings"
 }

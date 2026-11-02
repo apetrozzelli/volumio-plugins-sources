@@ -50,5 +50,9 @@
   "ALL_OUTPUTS": "Alle Audio-Ausgänge steuern",
   "D_ALL_OUTPUTS": "Wenn aktiviert, steuert der Verstärker die Lautstärke unabhängig vom gewählten Audioausgang.",
   "D_OUTPUT_CARD": "Lautstärkeregelung für diesen Audioausgang aktivieren.",
-  "TOAST_AUDIO_OUTPUTS_SAVE": "Audio-Ausgangseinstellungen"
+  "TOAST_AUDIO_OUTPUTS_SAVE": "Audio-Ausgangseinstellungen",
+  "INPUT_LABELS_SECTION": "Eingangsbezeichnungen",
+  "D_INPUT_LABELS_SECTION": "Passen Sie die Namen der Eingänge an Ihre angeschlossenen Geräte an.",
+  "D_CUSTOM_LABEL": "Benutzerdefinierter Name für diesen Eingang",
+  "TOAST_INPUT_LABELS_SAVE": "Eingangsbezeichnungen gespeichert"
 }

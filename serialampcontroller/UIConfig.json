@@ -205,6 +205,23 @@
       ]
     },
     {
+      "id": "input_labels",
+      "element": "section",
+      "label": "TRANSLATE.INPUT_LABELS_SECTION",
+      "description": "TRANSLATE.D_INPUT_LABELS_SECTION",
+      "icon": "fa-tag",
+      "onSave": {
+        "type": "controller",
+        "endpoint": "system_hardware/serialampcontroller",
+        "method": "updateInputLabels"
+      },
+      "saveButton": {
+        "label": "TRANSLATE.SAVE",
+        "data": []
+      },
+      "content": []
+    },
+    {
       "id": "audio_outputs",
       "element": "section",
       "label": "TRANSLATE.AUDIO_OUTPUTS_SECTION",

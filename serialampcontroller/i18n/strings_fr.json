@@ -50,5 +50,9 @@
   "ALL_OUTPUTS": "Contrôler toutes les sorties audio",
   "D_ALL_OUTPUTS": "Si activé, l'amplificateur contrôle le volume quelle que soit la sortie audio sélectionnée.",
   "D_OUTPUT_CARD": "Activer le contrôle de volume pour cette sortie audio.",
-  "TOAST_AUDIO_OUTPUTS_SAVE": "Paramètres des sorties audio"
+  "TOAST_AUDIO_OUTPUTS_SAVE": "Paramètres des sorties audio",
+  "INPUT_LABELS_SECTION": "Noms des Entrées",
+  "D_INPUT_LABELS_SECTION": "Personnalisez les noms des entrées de l'amplificateur selon vos appareils connectés.",
+  "D_CUSTOM_LABEL": "Nom personnalisé pour cette entrée",
+  "TOAST_INPUT_LABELS_SAVE": "Noms des Entrées"
 }

@@ -74,5 +74,9 @@
     "enabledOutputCards": {
         "type": "string",
         "value": "[]"
+    },
+    "customInputLabels": {
+        "type": "string",
+        "value": "{}"
     }
 }

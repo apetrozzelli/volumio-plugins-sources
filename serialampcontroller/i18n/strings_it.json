@@ -50,7 +50,11 @@
   "ALL_OUTPUTS": "Controlla tutte le uscite audio",
   "D_ALL_OUTPUTS": "Se abilitato, l'amplificatore controlla il volume a prescindere dall'uscita audio selezionata in Volumio.",
   "D_OUTPUT_CARD": "Abilita il controllo del volume per questa uscita audio.",
-  "TOAST_AUDIO_OUTPUTS_SAVE": "Impostazioni Uscite Audio"
+  "TOAST_AUDIO_OUTPUTS_SAVE": "Impostazioni Uscite Audio",
+  "INPUT_LABELS_SECTION": "Etichette Ingressi",
+  "D_INPUT_LABELS_SECTION": "Personalizza i nomi visualizzati per gli ingressi dell'amplificatore in base ai dispositivi collegati.",
+  "D_CUSTOM_LABEL": "Etichetta personalizzata per questo ingresso",
+  "TOAST_INPUT_LABELS_SAVE": "Impostazioni Etichette Ingressi"
 }
 
 
