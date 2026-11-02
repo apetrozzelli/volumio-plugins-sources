@@ -515,7 +515,7 @@ serialampcontroller.prototype.getUIConfig = function() {
                         if (card && card.id !== undefined && card.name !== 'Loopback') {
                             var cardIdStr = card.id.toString();
                             var fieldId = 'output_card_' + cardIdStr;
-                            var cardLabel = card.name + ' (' + (card.alsacard || ('Card ' + cardIdStr)) + ')';
+                            var cardLabel = card.name;
                             var isChecked = enabledCards.indexOf(cardIdStr) !== -1;
 
                             audioOutputsSection.content.push({
