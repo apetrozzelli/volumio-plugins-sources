@@ -348,6 +348,15 @@ serialampcontroller.prototype.updateDebugSettings = function (data) {
 
 // Manual Power Control Methods ----------------------------------------------------------------------
 
+serialampcontroller.prototype.setIgnoreUsbAudioDetach = function(value) {
+    var self = this;
+    try {
+        self.commandRouter.executeOnPlugin('audio_interface', 'alsa_controller', 'ignoreUsbAudioDetach', value);
+    } catch (e) {
+        self.logger.error('[SERIALAMPCONTROLLER] Failed to set ignoreUsbAudioDetach: ' + e);
+    }
+};
+
 serialampcontroller.prototype.manualPowerOn = function (data) {
     var self = this;
     if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] manualPowerOn: user requested power on');
@@ -370,6 +379,8 @@ serialampcontroller.prototype.manualPowerOn = function (data) {
             return libQ.resolve();
         })
         .then(function() {
+            self.setIgnoreUsbAudioDetach(false);
+            self.commandRouter.closeModals();
             self.commandRouter.pushToastMessage('success', self.getI18nString('MANUAL_POWER_SECTION'), self.getI18nString('TOAST_POWER_ON_SENT'));
             return libQ.resolve();
         })
@@ -389,6 +400,9 @@ serialampcontroller.prototype.manualPowerOff = function (data) {
         return libQ.resolve();
     }
 
+    // Suppress USB detach error modal since standby is an intentional power-down
+    self.setIgnoreUsbAudioDetach(true);
+
     var state = self.commandRouter.volumioGetState();
     if (state && state.status === 'play') {
         self.commandRouter.volumioPause();
@@ -396,6 +410,7 @@ serialampcontroller.prototype.manualPowerOff = function (data) {
 
     return self.sendCommand('powerOff')
         .then(function() {
+            self.commandRouter.closeModals();
             self.commandRouter.pushToastMessage('success', self.getI18nString('MANUAL_POWER_SECTION'), self.getI18nString('TOAST_POWER_OFF_SENT'));
             return libQ.resolve();
         })
@@ -415,8 +430,13 @@ serialampcontroller.prototype.manualPowerToggle = function (data) {
         return libQ.resolve();
     }
 
+    if (self.ampStatus.power === 'on') {
+        self.setIgnoreUsbAudioDetach(true);
+    }
+
     return self.sendCommand('powerToggle')
         .then(function() {
+            self.commandRouter.closeModals();
             self.commandRouter.pushToastMessage('success', self.getI18nString('MANUAL_POWER_SECTION'), self.getI18nString('TOAST_POWER_TOGGLE_SENT'));
             return libQ.resolve();
         })
@@ -635,6 +655,8 @@ serialampcontroller.prototype.smartPlayInterceptor = function(index) {
     // Step 3: Wait for output card / amp to be ready (with 7000ms safety timeout)
     self.wakeUpPromise = self.waitForAmpReady(7000)
         .then(function(ready) {
+            self.setIgnoreUsbAudioDetach(false);
+            self.commandRouter.closeModals();
             // Re-apply safe volume and input once DAC is ready
             var startupVol = self.config.get('startupVolume');
             if (startupVol !== undefined && startupVol !== null) {
@@ -1308,6 +1330,8 @@ serialampcontroller.prototype.processResponse = function(response, ...args) {
             if (self.powerupAtVolumioStart) {self.powerupAtVolumioStart = false};   
             self.ampStatus.power = 'on';
             self.messageReceived.emit('power', 'on');
+            self.setIgnoreUsbAudioDetach(false);
+            self.commandRouter.closeModals();
             setTimeout(() => {
                 self.initVolumeSettings()
                 .then(_ => {
@@ -1321,6 +1345,8 @@ serialampcontroller.prototype.processResponse = function(response, ...args) {
         case "respPowerOff":
             if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] processResponse: Amp signaled PowerOff');            
             if (self.ampStatus.Powering == 'down') self.ampStatus.Powering = '';
+            self.setIgnoreUsbAudioDetach(true);
+            self.commandRouter.closeModals();
             self.socket.emit('pause'); //stops volumio if amp is powered down
             self.messageReceived.emit('power', 'standby');
             self.ampStatus.power='standby';
