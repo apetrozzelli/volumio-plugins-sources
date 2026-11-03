@@ -56,5 +56,14 @@
   "D_CUSTOM_LABEL": "Custom label for this input",
   "TOAST_INPUT_LABELS_SAVE": "Input Labels Settings",
   "TOAST_DAC_WAKING_UP": "Waking up amplifier...",
-  "TOAST_DAC_WAKEUP_TIMEOUT": "Amplifier wake-up timeout. Please verify power and connections."
+  "TOAST_DAC_WAKEUP_TIMEOUT": "Amplifier wake-up timeout. Please verify power and connections.",
+  "MANUAL_POWER_SECTION": "Power Control",
+  "POWER_ON": "Power On",
+  "D_POWER_ON": "Send power on command to the amplifier.",
+  "POWER_OFF": "Standby",
+  "D_POWER_OFF": "Send standby/power off command to the amplifier.",
+  "TOAST_POWER_ON_SENT": "Power on command sent to amplifier.",
+  "TOAST_POWER_OFF_SENT": "Standby command sent to amplifier.",
+  "TOAST_POWER_TOGGLE_SENT": "Power toggle command sent to amplifier.",
+  "TOAST_NO_AMP_SELECTED": "No amplifier model selected."
 }

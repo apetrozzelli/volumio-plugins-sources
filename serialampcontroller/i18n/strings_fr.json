@@ -56,5 +56,14 @@
   "D_CUSTOM_LABEL": "Nom personnalisé pour cette entrée",
   "TOAST_INPUT_LABELS_SAVE": "Noms des Entrées",
   "TOAST_DAC_WAKING_UP": "Allumage de l'amplificateur en cours...",
-  "TOAST_DAC_WAKEUP_TIMEOUT": "Délai d'allumage de l'amplificateur dépassé. Vérifiez l'alimentation."
+  "TOAST_DAC_WAKEUP_TIMEOUT": "Délai d'allumage de l'amplificateur dépassé. Vérifiez l'alimentation.",
+  "MANUAL_POWER_SECTION": "Contrôle de l'Alimentation",
+  "POWER_ON": "Allumer",
+  "D_POWER_ON": "Envoyer la commande d'allumage à l'amplificateur.",
+  "POWER_OFF": "Standby",
+  "D_POWER_OFF": "Envoyer la commande de mise en veille à l'amplificateur.",
+  "TOAST_POWER_ON_SENT": "Commande d'allumage envoyée à l'amplificateur.",
+  "TOAST_POWER_OFF_SENT": "Commande de mise en veille envoyée à l'amplificateur.",
+  "TOAST_POWER_TOGGLE_SENT": "Commande d'inversion d'alimentation envoyée.",
+  "TOAST_NO_AMP_SELECTED": "Aucun modèle d'amplificateur sélectionné."
 }

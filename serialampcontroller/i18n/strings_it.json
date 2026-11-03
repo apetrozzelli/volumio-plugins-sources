@@ -56,7 +56,16 @@
   "D_CUSTOM_LABEL": "Etichetta personalizzata per questo ingresso",
   "TOAST_INPUT_LABELS_SAVE": "Impostazioni Etichette Ingressi",
   "TOAST_DAC_WAKING_UP": "Accensione amplificatore in corso...",
-  "TOAST_DAC_WAKEUP_TIMEOUT": "Timeout accensione amplificatore. Verificare alimentazione e connessioni."
+  "TOAST_DAC_WAKEUP_TIMEOUT": "Timeout accensione amplificatore. Verificare alimentazione e connessioni.",
+  "MANUAL_POWER_SECTION": "Controllo Alimentazione",
+  "POWER_ON": "Accendi",
+  "D_POWER_ON": "Invia il comando di accensione all'amplificatore.",
+  "POWER_OFF": "Standby",
+  "D_POWER_OFF": "Invia il comando di standby/spegnimento all'amplificatore.",
+  "TOAST_POWER_ON_SENT": "Comando di accensione inviato all'amplificatore.",
+  "TOAST_POWER_OFF_SENT": "Comando di standby inviato all'amplificatore.",
+  "TOAST_POWER_TOGGLE_SENT": "Comando di alternanza accensione inviato.",
+  "TOAST_NO_AMP_SELECTED": "Nessun modello di amplificatore selezionato."
 }
 
 

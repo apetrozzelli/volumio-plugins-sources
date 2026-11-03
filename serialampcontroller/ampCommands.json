@@ -17,6 +17,7 @@
             "delimiter": ";",
             "commands": {
                     "powerOn": "Z1POW1;",
+                    "powerOff": "Z1POW0;",
                     "powerToggle": "Z1POW0;",
                     "volUp": "Z1VUP00.5;",
                     "volDown": "Z1VDN00.5;",
@@ -58,6 +59,7 @@
             "delimiter": "$",
             "commands": {
                     "powerOn": "power_on!",
+                    "powerOff": "power_off!",
                     "powerToggle": "power_toggle!",
                     "volUp": "vol_up!",
                     "volDown": "vol_dwn!",
@@ -99,6 +101,7 @@
             "delimiter": "$",
             "commands": {
                 "powerOn": "power_on!",
+                "powerOff": "power_off!",
                 "powerToggle": "power_toggle!",
                 "volUp": "vol_up!",
                 "volDown": "vol_dwn!",
@@ -140,6 +143,7 @@
             "delimiter": "$",
             "commands": {
                 "powerOn": "power_on!",
+                "powerOff": "power_off!",
                 "powerToggle": "power_toggle!",
                 "volUp": "vol_up!",
                 "volDown": "vol_dwn!",
@@ -181,6 +185,7 @@
             "delimiter": "!",
             "commands": {
                     "powerOn": "power_on!",
+                    "powerOff": "power_off!",
                     "powerToggle": "power_toggle!",
                     "volUp": "volume_up!",
                     "volDown": "volume_down!",
@@ -224,6 +229,7 @@
             "delimiter": "$",
             "commands": {
                     "powerOn": "power_on!",
+                    "powerOff": "power_off!",
                     "powerToggle": "power_toggle!",
                     "volUp": "vol_up!",
                     "volDown": "vol_dwn!",
@@ -267,6 +273,7 @@
             "delimiter": "!",
             "commands": {
                     "powerOn": "power_on!",
+                    "powerOff": "power_off!",
                     "powerToggle": "power_toggle!",
                     "volUp": "volume_up!",
                     "volDown": "volume_down!",
@@ -310,6 +317,7 @@
             "delimiter": "$",
             "commands": {
                     "powerOn": "power_on!",
+                    "powerOff": "power_off!",
                     "powerToggle": "power_toggle!",
                     "volUp": "vol_up!",
                     "volDown": "vol_dwn!",
@@ -381,6 +389,7 @@
             "delimiter": "\r",
             "commands": {
                 "powerOn": "#1,02,1\r",
+                "powerOff": "#1,02,0\r",
                 "muteOn": "#1,04,1\r",
                 "muteOff": "#1,04,0\r"
             },
@@ -415,14 +424,15 @@
             "sourceRespPostfix": ["USB", "COAX", "OPT", "HDMI 1", "HDMI 2", "AES"],
             "delimiter": "\r\n",
             "commands": {
-                "powerOn": "Main.Power=On\r",
-                "powerToggle": "Main.Power+\r",
-                "volUp": "Main.Volume+\r",
-                "volDown": "Main.Volume-\r",
-                "volValue": "Main.Volume=#\r",
-                "mute": "Main.Mute+\r",
-                "muteOn": "Main.Mute=On\r",
-                "muteOff": "Main.Mute=Off\r"
+                "powerOn": "\rMain.Power=On\r",
+                "powerOff": "\rMain.Power=Off\r",
+                "powerToggle": "\rMain.Power+\r",
+                "volUp": "\rMain.Volume+\r",
+                "volDown": "\rMain.Volume-\r",
+                "volValue": "\rMain.Volume=#\r",
+                "mute": "\rMain.Mute+\r",
+                "muteOn": "\rMain.Mute=On\r",
+                "muteOff": "\rMain.Mute=Off\r"
             },
             "responses": [
                 {"rx": "Main\\.Power=On", "cmd": ["respPowerOn"]},

@@ -205,6 +205,44 @@
       ]
     },
     {
+      "id": "manual_control",
+      "element": "section",
+      "label": "TRANSLATE.MANUAL_POWER_SECTION",
+      "icon": "fa-power-off",
+      "content": [
+        {
+          "id": "power_on_btn",
+          "element": "button",
+          "label": "TRANSLATE.POWER_ON",
+          "doc": "TRANSLATE.D_POWER_ON",
+          "onClick": {
+            "type": "emit",
+            "message": "callMethod",
+            "data": {
+              "endpoint": "system_hardware/serialampcontroller",
+              "method": "manualPowerOn",
+              "data": ""
+            }
+          }
+        },
+        {
+          "id": "power_off_btn",
+          "element": "button",
+          "label": "TRANSLATE.POWER_OFF",
+          "doc": "TRANSLATE.D_POWER_OFF",
+          "onClick": {
+            "type": "emit",
+            "message": "callMethod",
+            "data": {
+              "endpoint": "system_hardware/serialampcontroller",
+              "method": "manualPowerOff",
+              "data": ""
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "input_labels",
       "element": "section",
       "label": "TRANSLATE.INPUT_LABELS_SECTION",

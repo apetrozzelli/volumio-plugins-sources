@@ -2,6 +2,7 @@
 
 var libQ = require('kew');
 var fs=require('fs-extra');
+var path = require('path');
 var config = new (require('v-conf'))();
 const { SerialPort } = require('serialport');
 const { ReadlineParser } = require('@serialport/parser-readline');
@@ -115,7 +116,10 @@ serialampcontroller.prototype.deactivate = function () {
 serialampcontroller.prototype.loadAmpDefinitions = function() {
     var self = this;
 
-    var ampDefinitionFile = this.commandRouter.pluginManager.getConfigurationFile(this.context,'ampCommands.json');
+    var ampDefinitionFile = path.join(__dirname, 'ampCommands.json');
+    if (!fs.existsSync(ampDefinitionFile)) {
+        ampDefinitionFile = this.commandRouter.pluginManager.getConfigurationFile(this.context,'ampCommands.json');
+    }
     self.ampDefinitions = new(require('v-conf'))();
     self.ampDefinitions.loadFile(ampDefinitionFile);
     // if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] loadAmpDefinitions: loaded AmpDefinitions: ' + JSON.stringify(self.ampDefinitions));
@@ -340,6 +344,87 @@ serialampcontroller.prototype.updateDebugSettings = function (data) {
     ;
     self.commandRouter.pushToastMessage('success', self.getI18nString('TOAST_SAVE_SUCCESS'), self.getI18nString('TOAST_DEBUG_SAVE'));
     return libQ.resolve();
+};
+
+// Manual Power Control Methods ----------------------------------------------------------------------
+
+serialampcontroller.prototype.manualPowerOn = function (data) {
+    var self = this;
+    if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] manualPowerOn: user requested power on');
+
+    if (!self.selectedAmp) {
+        self.commandRouter.pushToastMessage('error', self.getI18nString('MANUAL_POWER_SECTION'), self.getI18nString('TOAST_NO_AMP_SELECTED'));
+        return libQ.resolve();
+    }
+
+    var startupVol = self.config.get('startupVolume');
+    if (startupVol !== undefined && startupVol !== null) {
+        self.alsavolume(startupVol);
+    }
+
+    return self.sendCommand('powerOn')
+        .then(function() {
+            if (self.config.get('switchInputAtPlay')) {
+                return self.sendCommand('source', self.config.get('volumioInput'));
+            }
+            return libQ.resolve();
+        })
+        .then(function() {
+            self.commandRouter.pushToastMessage('success', self.getI18nString('MANUAL_POWER_SECTION'), self.getI18nString('TOAST_POWER_ON_SENT'));
+            return libQ.resolve();
+        })
+        .fail(function(err) {
+            self.logger.error('[SERIALAMPCONTROLLER] manualPowerOn failed: ' + err);
+            self.commandRouter.pushToastMessage('error', self.getI18nString('MANUAL_POWER_SECTION'), err.message || err);
+            return libQ.resolve();
+        });
+};
+
+serialampcontroller.prototype.manualPowerOff = function (data) {
+    var self = this;
+    if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] manualPowerOff: user requested standby');
+
+    if (!self.selectedAmp) {
+        self.commandRouter.pushToastMessage('error', self.getI18nString('MANUAL_POWER_SECTION'), self.getI18nString('TOAST_NO_AMP_SELECTED'));
+        return libQ.resolve();
+    }
+
+    var state = self.commandRouter.volumioGetState();
+    if (state && state.status === 'play') {
+        self.commandRouter.volumioPause();
+    }
+
+    return self.sendCommand('powerOff')
+        .then(function() {
+            self.commandRouter.pushToastMessage('success', self.getI18nString('MANUAL_POWER_SECTION'), self.getI18nString('TOAST_POWER_OFF_SENT'));
+            return libQ.resolve();
+        })
+        .fail(function(err) {
+            self.logger.error('[SERIALAMPCONTROLLER] manualPowerOff failed: ' + err);
+            self.commandRouter.pushToastMessage('error', self.getI18nString('MANUAL_POWER_SECTION'), err.message || err);
+            return libQ.resolve();
+        });
+};
+
+serialampcontroller.prototype.manualPowerToggle = function (data) {
+    var self = this;
+    if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] manualPowerToggle: user requested power toggle');
+
+    if (!self.selectedAmp) {
+        self.commandRouter.pushToastMessage('error', self.getI18nString('MANUAL_POWER_SECTION'), self.getI18nString('TOAST_NO_AMP_SELECTED'));
+        return libQ.resolve();
+    }
+
+    return self.sendCommand('powerToggle')
+        .then(function() {
+            self.commandRouter.pushToastMessage('success', self.getI18nString('MANUAL_POWER_SECTION'), self.getI18nString('TOAST_POWER_TOGGLE_SENT'));
+            return libQ.resolve();
+        })
+        .fail(function(err) {
+            self.logger.error('[SERIALAMPCONTROLLER] manualPowerToggle failed: ' + err);
+            self.commandRouter.pushToastMessage('error', self.getI18nString('MANUAL_POWER_SECTION'), err.message || err);
+            return libQ.resolve();
+        });
 };
 
 serialampcontroller.prototype.activateSocketIO = function () {
@@ -1130,15 +1215,33 @@ serialampcontroller.prototype.sendCommand  = function(...cmd) {
     if (self.selectedAmp != undefined && self.selectedAmp.commands != undefined && self.selectedAmp.sources != undefined && self.selectedAmp.sourceCmd != undefined) {
         switch (cmd[0]) {
             case  "powerOn": 
-                if (self.ampStatus.Powering != 'up') cmdString = cmdString + self.selectedAmp.commands.powerOn;
-                self.ampStatus.Powering = 'up';
+                if (self.selectedAmp.commands.powerOn != undefined) {
+                    cmdString = cmdString + self.selectedAmp.commands.powerOn;
+                    self.ampStatus.Powering = 'up';
+                } else if (self.selectedAmp.commands.powerToggle != undefined) {
+                    cmdString = cmdString + self.selectedAmp.commands.powerToggle;
+                    self.ampStatus.Powering = 'up';
+                }
+                setTimeout(function() { if (self.ampStatus && self.ampStatus.Powering === 'up') self.ampStatus.Powering = ''; }, 3000);
+                break;
+            case  "powerOff": 
+                if (self.selectedAmp.commands.powerOff != undefined) {
+                    cmdString = cmdString + self.selectedAmp.commands.powerOff;
+                    self.ampStatus.Powering = 'down';
+                } else if (self.selectedAmp.commands.powerToggle != undefined) {
+                    cmdString = cmdString + self.selectedAmp.commands.powerToggle;
+                    self.ampStatus.Powering = 'down';
+                }
+                setTimeout(function() { if (self.ampStatus && self.ampStatus.Powering === 'down') self.ampStatus.Powering = ''; }, 3000);
                 break;
             case  "powerToggle": 
-                if (self.ampStatus.Powering == '') cmdString = cmdString = cmdString + self.selectedAmp.commands.powerToggle;
-                if (self.ampStatus.power == 'on' && self.ampStatus.Powering == '' ) {
-                    self.ampStatus.Powering = 'down'
-                } else if (self.ampStatus.power == 'standby' && self.ampStatus.Powering == '') {
-                    self.ampStatus.Powering = 'up'
+                if (self.selectedAmp.commands.powerToggle != undefined) {
+                    if (self.ampStatus.Powering == '') cmdString = cmdString + self.selectedAmp.commands.powerToggle;
+                    if (self.ampStatus.power == 'on' && self.ampStatus.Powering == '' ) {
+                        self.ampStatus.Powering = 'down';
+                    } else if (self.ampStatus.power == 'standby' && self.ampStatus.Powering == '') {
+                        self.ampStatus.Powering = 'up';
+                    }
                 }
                 break;
             case  "volUp": 

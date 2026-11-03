@@ -56,5 +56,14 @@
   "D_CUSTOM_LABEL": "Benutzerdefinierter Name für diesen Eingang",
   "TOAST_INPUT_LABELS_SAVE": "Eingangsbezeichnungen gespeichert",
   "TOAST_DAC_WAKING_UP": "Verstärker wird eingeschaltet...",
-  "TOAST_DAC_WAKEUP_TIMEOUT": "Zeitüberschreitung beim Einschalten des Verstärkers. Bitte Stromversorgung prüfen."
+  "TOAST_DAC_WAKEUP_TIMEOUT": "Zeitüberschreitung beim Einschalten des Verstärkers. Bitte Stromversorgung prüfen.",
+  "MANUAL_POWER_SECTION": "Stromversorgungssteuerung",
+  "POWER_ON": "Einschalten",
+  "D_POWER_ON": "Einschaltbefehl an den Verstärker senden.",
+  "POWER_OFF": "Standby",
+  "D_POWER_OFF": "Standby-Befehl an den Verstärker senden.",
+  "TOAST_POWER_ON_SENT": "Einschaltbefehl gesendet.",
+  "TOAST_POWER_OFF_SENT": "Standby-Befehl gesendet.",
+  "TOAST_POWER_TOGGLE_SENT": "Power-Toggle-Befehl gesendet.",
+  "TOAST_NO_AMP_SELECTED": "Kein Verstärkermodell ausgewählt."
 }
