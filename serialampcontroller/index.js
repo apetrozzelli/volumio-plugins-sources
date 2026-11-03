@@ -59,6 +59,9 @@ serialampcontroller.prototype.onStart = function() {
     .then(_ => self.setActiveAmp()) // set the active amp
     .then(_=> self.activate())
     .then(_ => self.registerOutputDeviceListener())
+    .then(_ => {
+        self.installPlayInterceptor();
+    })
     .then(function(){
             if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] onStart: successfully started plugin');
             defer.resolve();
@@ -96,9 +99,10 @@ serialampcontroller.prototype.activate = function () {
 serialampcontroller.prototype.deactivate = function () {
     var self = this;
     var defer = libQ.defer();
+    self.removePlayInterceptor();
     self.closePort();
     if (self.socket !== undefined) self.socket.disconnect();
-    self.resetVolumeSettings()
+    self.resetVolumeSettings();
     //Check if selected interface is physically available
     //check if selected amp supports selected interface
     //Activate Websock listener to react on messages from volumio
@@ -346,7 +350,9 @@ serialampcontroller.prototype.activateSocketIO = function () {
         if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] on:pushState: ' + JSON.stringify(self.volumioStatus) + ' - ' + data.status);
         if ((self.volumioStatus == undefined || self.volumioStatus.status == 'stop' || self.volumioStatus.status == 'pause' ) && data.status=='play') {
             //status changed to play
-            if (self.ampStatus.power == 'standby') {
+            if (self.lastWakeupTime && (Date.now() - self.lastWakeupTime < 8000)) {
+                if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] on:pushState: smart wakeup recently ran, skipping redundant commands');
+            } else if (self.ampStatus.power == 'standby') {
                 if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] on:pushState: amp in standby');
                 if (self.config.get('powerupOnPlay')) {
                     if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] on:pushState: amp in standby - send powerup after play pressed');
@@ -360,6 +366,209 @@ serialampcontroller.prototype.activateSocketIO = function () {
         if (self.volumioStatus!==undefined) {self.volumioStatus = data;}
 	})
 }
+
+// Smart Wake-Up Interceptor --------------------------------------------------------------------------
+
+serialampcontroller.prototype.installPlayInterceptor = function() {
+    var self = this;
+    if (self.commandRouter && self.commandRouter.stateMachine) {
+        if (!self.originalStateMachinePlay) {
+            self.originalStateMachinePlay = self.commandRouter.stateMachine.play;
+            self.commandRouter.stateMachine.play = function(index) {
+                return self.smartPlayInterceptor(index);
+            };
+            if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] installPlayInterceptor: successfully hooked stateMachine.play');
+        }
+    } else {
+        self.logger.error('[SERIALAMPCONTROLLER] installPlayInterceptor: stateMachine not found on commandRouter');
+    }
+};
+
+serialampcontroller.prototype.removePlayInterceptor = function() {
+    var self = this;
+    if (self.originalStateMachinePlay && self.commandRouter && self.commandRouter.stateMachine) {
+        self.commandRouter.stateMachine.play = self.originalStateMachinePlay;
+        self.originalStateMachinePlay = null;
+        if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] removePlayInterceptor: restored original stateMachine.play');
+    }
+    self.isWakingUp = false;
+    if (self.wakeUpInterval) {
+        clearInterval(self.wakeUpInterval);
+        self.wakeUpInterval = null;
+    }
+    if (self.wakeUpSafetyTimer) {
+        clearTimeout(self.wakeUpSafetyTimer);
+        self.wakeUpSafetyTimer = null;
+    }
+};
+
+serialampcontroller.prototype.isCurrentOutputCardPresent = function() {
+    var self = this;
+    try {
+        var cardName = self.commandRouter.executeOnPlugin('audio_interface', 'alsa_controller', 'getConfigParam', 'outputdevicecardname');
+        var cardId = self.commandRouter.executeOnPlugin('audio_interface', 'alsa_controller', 'getConfigParam', 'outputdevice');
+
+        if (cardId === 'softvolume') {
+            cardId = self.commandRouter.executeOnPlugin('audio_interface', 'alsa_controller', 'getConfigParam', 'softvolumenumber');
+        }
+
+        if (cardName && fs.existsSync('/proc/asound/' + cardName)) {
+            return true;
+        }
+        if (cardId !== undefined && cardId !== null && cardId !== '' && fs.existsSync('/proc/asound/card' + cardId)) {
+            return true;
+        }
+        if (fs.existsSync('/proc/asound/cards')) {
+            var cardsText = fs.readFileSync('/proc/asound/cards', 'utf8');
+            if (cardName && cardsText.indexOf(cardName) >= 0) {
+                return true;
+            }
+        }
+        return false;
+    } catch (e) {
+        if (self.debugLogging) self.logger.error('[SERIALAMPCONTROLLER] isCurrentOutputCardPresent error: ' + e);
+        return true;
+    }
+};
+
+serialampcontroller.prototype.waitForAmpReady = function(timeoutMs) {
+    var self = this;
+    var defer = libQ.defer();
+    var timeout = timeoutMs || 7000;
+    var startTime = Date.now();
+    var checkIntervalMs = 250;
+    var settlingDelayMs = 800;
+
+    var cardInitiallyPresent = self.isCurrentOutputCardPresent();
+
+    var isReady = function() {
+        var cardOk = self.isCurrentOutputCardPresent();
+        if (!cardOk) {
+            return false;
+        }
+        // If USB card was missing and just appeared, the DAC definitely powered up
+        if (!cardInitiallyPresent && cardOk) {
+            return true;
+        }
+        // If card is present, check if amp confirmed ON or not in standby
+        if (self.ampStatus && self.ampStatus.power === 'on') {
+            return true;
+        }
+        if (self.ampStatus && self.ampStatus.power !== 'standby' && self.ampStatus.power !== 'off') {
+            return true;
+        }
+        return false;
+    };
+
+    if (isReady()) {
+        return libQ.resolve(true);
+    }
+
+    var intervalTimer = setInterval(function() {
+        if (isReady()) {
+            clearInterval(intervalTimer);
+            clearTimeout(safetyTimer);
+            self.wakeUpInterval = null;
+            self.wakeUpSafetyTimer = null;
+            var elapsed = Date.now() - startTime;
+            if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] Amp and output card ready after ' + elapsed + 'ms');
+            var settle = cardInitiallyPresent ? 200 : settlingDelayMs;
+            setTimeout(function() {
+                defer.resolve(true);
+            }, settle);
+        }
+    }, checkIntervalMs);
+    self.wakeUpInterval = intervalTimer;
+
+    var safetyTimer = setTimeout(function() {
+        clearInterval(intervalTimer);
+        self.wakeUpInterval = null;
+        self.wakeUpSafetyTimer = null;
+        var elapsed = Date.now() - startTime;
+        self.logger.error('[SERIALAMPCONTROLLER] Amp/output card ready wait timed out after ' + elapsed + 'ms');
+        if (!self.isCurrentOutputCardPresent()) {
+            self.commandRouter.pushToastMessage('warning', 'serialampcontroller', self.getI18nString('TOAST_DAC_WAKEUP_TIMEOUT'));
+        }
+        defer.resolve(false);
+    }, timeout);
+    self.wakeUpSafetyTimer = safetyTimer;
+
+    return defer.promise;
+};
+
+serialampcontroller.prototype.smartPlayInterceptor = function(index) {
+    var self = this;
+
+    if (!self.config.get('powerupOnPlay') || !self.selectedAmp) {
+        return self.originalStateMachinePlay.call(self.commandRouter.stateMachine, index);
+    }
+
+    var currentCard = self.commandRouter.executeOnPlugin('audio_interface', 'alsa_controller', 'getConfigParam', 'outputdevice');
+    if (!self.isOutputCardEnabled(currentCard)) {
+        if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] smartPlayInterceptor: current card (' + currentCard + ') not managed by serialampcontroller. Skipping wakeup.');
+        return self.originalStateMachinePlay.call(self.commandRouter.stateMachine, index);
+    }
+
+    var cardPresent = self.isCurrentOutputCardPresent();
+    var ampInStandby = (self.ampStatus.power === 'standby' || self.ampStatus.power === 'off');
+
+    // If card is present and amp is confirmed ON, no wakeup sequence is needed
+    if (cardPresent && !ampInStandby && self.ampStatus.Powering !== 'up') {
+        if (self.config.get('switchInputAtPlay')) {
+            self.sendCommand('source', self.config.get('volumioInput'));
+        }
+        return self.originalStateMachinePlay.call(self.commandRouter.stateMachine, index);
+    }
+
+    // If a wakeup sequence is already in progress, join it
+    if (self.isWakingUp && self.wakeUpPromise) {
+        if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] smartPlayInterceptor: Wakeup already in progress, joining wait queue.');
+        return self.wakeUpPromise.then(function() {
+            return self.originalStateMachinePlay.call(self.commandRouter.stateMachine, index);
+        });
+    }
+
+    if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] smartPlayInterceptor: Triggering smart wakeup sequence (cardPresent=' + cardPresent + ', ampPower=' + self.ampStatus.power + ')');
+
+    self.isWakingUp = true;
+    self.lastWakeupTime = Date.now();
+
+    self.commandRouter.pushToastMessage('info', 'serialampcontroller', self.getI18nString('TOAST_DAC_WAKING_UP'));
+
+    // Step 1: Set safe startup volume immediately to protect speakers
+    var startupVol = self.config.get('startupVolume');
+    if (startupVol !== undefined && startupVol !== null) {
+        self.alsavolume(startupVol);
+    }
+
+    // Step 2: Send powerOn and input switch commands
+    self.sendCommand('powerOn')
+        .then(function() {
+            return self.sendCommand('source', self.config.get('volumioInput'));
+        });
+
+    // Step 3: Wait for output card / amp to be ready (with 7000ms safety timeout)
+    self.wakeUpPromise = self.waitForAmpReady(7000)
+        .then(function(ready) {
+            // Re-apply safe volume and input once DAC is ready
+            var startupVol = self.config.get('startupVolume');
+            if (startupVol !== undefined && startupVol !== null) {
+                self.alsavolume(startupVol);
+            }
+            if (self.config.get('switchInputAtPlay')) {
+                self.sendCommand('source', self.config.get('volumioInput'));
+            }
+            return ready;
+        })
+        .fin(function() {
+            self.isWakingUp = false;
+        });
+
+    return self.wakeUpPromise.then(function() {
+        if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] smartPlayInterceptor: Resuming original stateMachine.play(' + (index !== undefined ? index : '') + ')');
+        return self.originalStateMachinePlay.call(self.commandRouter.stateMachine, index);
+    });
+};
 
 serialampcontroller.prototype.getAmpStatus = function() {
     var self = this;
@@ -423,6 +632,7 @@ serialampcontroller.prototype.onStop = function() {
     var self = this;
     var defer=libQ.defer();
 
+    self.removePlayInterceptor();
     self.deactivate();
     defer.resolve();
     return defer.promise;
@@ -993,6 +1203,8 @@ serialampcontroller.prototype.processResponse = function(response, ...args) {
             if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] processResponse: Amp signaled PowerOn. Previous state is: ' + self.ampStatus.power);
             if (self.ampStatus.Powering == 'up') self.ampStatus.Powering = '';
             if (self.powerupAtVolumioStart) {self.powerupAtVolumioStart = false};   
+            self.ampStatus.power = 'on';
+            self.messageReceived.emit('power', 'on');
             setTimeout(() => {
                 self.initVolumeSettings()
                 .then(_ => {
@@ -1000,10 +1212,8 @@ serialampcontroller.prototype.processResponse = function(response, ...args) {
                         self.sendCommand('source',self.config.get('volumioInput'));
                         self.socket.emit('play');
                     }
-                    self.messageReceived.emit('power', 'on');
-                    self.ampStatus.power='on';
                 })                
-            }, 10000);
+            }, 1000);
             break;
         case "respPowerOff":
             if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] processResponse: Amp signaled PowerOff');            
@@ -1531,14 +1741,16 @@ serialampcontroller.prototype.waitForAcknowledge = function(eventType) {
 serialampcontroller.prototype.getI18nString = function (key) {
     var self = this;
 
-    if (self.i18nStrings[key] !== undefined) {
+    if (self.i18nStrings && self.i18nStrings[key] !== undefined) {
         if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] getI18nString("'+key+'"):'+ self.i18nStrings[key]);
         return self.i18nStrings[key];
+    } else if (self.i18nStringsDefaults && self.i18nStringsDefaults[key] !== undefined) {
+        if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] getI18nString("'+key+'"):'+ self.i18nStringsDefaults[key]);
+        return self.i18nStringsDefaults[key];
     } else {
-        if (self.debugLogging) self.logger.info('[SERIALAMPCONTROLLER] getI18nString("'+key+'")'+ self.i18nStringsDefaults[key]);
-        return self.i18nStringsDefaults['SERIALAMPCONTROL'][key];
-    };
-}
+        return key;
+    }
+};
 // A method to get some language strings used by the plugin
 serialampcontroller.prototype.loadI18nStrings = function() {
     var self = this;

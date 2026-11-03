@@ -54,5 +54,7 @@
   "INPUT_LABELS_SECTION": "Noms des Entrées",
   "D_INPUT_LABELS_SECTION": "Personnalisez les noms des entrées de l'amplificateur selon vos appareils connectés.",
   "D_CUSTOM_LABEL": "Nom personnalisé pour cette entrée",
-  "TOAST_INPUT_LABELS_SAVE": "Noms des Entrées"
+  "TOAST_INPUT_LABELS_SAVE": "Noms des Entrées",
+  "TOAST_DAC_WAKING_UP": "Allumage de l'amplificateur en cours...",
+  "TOAST_DAC_WAKEUP_TIMEOUT": "Délai d'allumage de l'amplificateur dépassé. Vérifiez l'alimentation."
 }

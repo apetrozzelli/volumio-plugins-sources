@@ -54,5 +54,7 @@
   "INPUT_LABELS_SECTION": "Input Labels",
   "D_INPUT_LABELS_SECTION": "Customize the display names of the amplifier inputs to match your connected audio sources.",
   "D_CUSTOM_LABEL": "Custom label for this input",
-  "TOAST_INPUT_LABELS_SAVE": "Input Labels Settings"
+  "TOAST_INPUT_LABELS_SAVE": "Input Labels Settings",
+  "TOAST_DAC_WAKING_UP": "Waking up amplifier...",
+  "TOAST_DAC_WAKEUP_TIMEOUT": "Amplifier wake-up timeout. Please verify power and connections."
 }

@@ -54,7 +54,9 @@
   "INPUT_LABELS_SECTION": "Etichette Ingressi",
   "D_INPUT_LABELS_SECTION": "Personalizza i nomi visualizzati per gli ingressi dell'amplificatore in base ai dispositivi collegati.",
   "D_CUSTOM_LABEL": "Etichetta personalizzata per questo ingresso",
-  "TOAST_INPUT_LABELS_SAVE": "Impostazioni Etichette Ingressi"
+  "TOAST_INPUT_LABELS_SAVE": "Impostazioni Etichette Ingressi",
+  "TOAST_DAC_WAKING_UP": "Accensione amplificatore in corso...",
+  "TOAST_DAC_WAKEUP_TIMEOUT": "Timeout accensione amplificatore. Verificare alimentazione e connessioni."
 }
 
 
